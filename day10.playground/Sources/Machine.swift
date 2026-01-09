@@ -142,27 +142,21 @@ public func minimalPresses(for line: Line) -> [Int] {
     var pressState = PressState(presses: pressCount, buttonCount: line.buttons.count)
     var checked = Set<[Int]>()
     var buttonPresses: [Int] = pressState.currentState
-    print("Starting \(pressCount)")
 
     while true {
         if !checked.contains(buttonPresses) {
-            
+
             checked.insert(buttonPresses)
             var machine = line.machine
-            
+
             machine.process(buttonPresses, with: line.buttons)
-            //        print(next)
-            //        print(machine.description)
             if machine.isSolved {
-//                print("found") // [1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0]
-//                print(buttonPresses)
                 return buttonPresses
             }
         }
 
         guard let next = pressState.next() else {
             pressCount += 1
-            print("Starting \(pressCount)")
             pressState = PressState(presses: pressCount, buttonCount: line.buttons.count)
             continue
         }
@@ -170,4 +164,78 @@ public func minimalPresses(for line: Line) -> [Int] {
     }
 
     return []
+}
+
+public func joltageSearch(for line: Line, memo: [[Int]: Int] = [:]) -> Int {
+    let pressesForJoltChange: [[Int]: Int] = {
+        var res: [[Int]: Int] = [:]
+        (1...Int(pow(2.0, Double(line.buttons.count)))).forEach { combination in
+            var joltIncrease = Array(repeating: 0, count: line.joltages.count)
+
+            let binaryString = String(String(combination, radix: 2).reversed()).padding(toLength: line.buttons.count, withPad: "0", startingAt: 0)
+            for (buttonIdx, binaryDigit) in binaryString.enumerated() {
+                guard binaryDigit == "1" else {
+                    continue
+                }
+
+                line.buttons[buttonIdx].lights.forEach {
+                    joltIncrease[$0] += 1
+                }
+            }
+            let buttonsPresses = binaryString.count(where: { $0 == "1" })
+
+            if res[joltIncrease, default: Int.max] > buttonsPresses {
+                res[joltIncrease] = buttonsPresses
+            }
+        }
+        return res
+    }()
+
+    func search(for joltages: [Int], memo: inout [[Int]: Int]) -> Int? {
+        if joltages.allSatisfy({ $0 == .zero }) {
+            // Count presses down to zero
+            return 0
+        }
+        if joltages.contains(where: { $0 < .zero }) {
+            // Count presses down to zero
+            return nil
+        }
+
+        if let previousMatch = memo[joltages] {
+            return previousMatch
+        }
+
+        func isValid(jolts: [Int], with pressPattern: [Int]) -> Bool {
+            zip(jolts, pressPattern).allSatisfy { (currJolt, pressesCount) in
+                pressesCount <= currJolt && currJolt % 2 == pressesCount % 2
+            }
+        }
+
+        var res = Int.max
+        for (pressReductions, buttonPressCount) in pressesForJoltChange {
+            guard isValid(jolts: joltages, with: pressReductions) else {
+                continue
+            }
+
+            let reducedJoltages = zip(joltages, pressReductions).map {
+                ($0.0 - $0.1) / 2
+            }
+
+            if let resPresses = search(for: reducedJoltages, memo: &memo) {
+                let expandedRes = buttonPressCount + (2 * resPresses)
+                if expandedRes < res {
+                    res = expandedRes
+                }
+            }
+        }
+
+        if res < Int.max {
+            memo[joltages] = res
+            return res
+        }
+        return nil
+    }
+
+    var memo = [[Int]: Int]()
+    return search(for: line.joltages, memo: &memo) ?? -1
 }

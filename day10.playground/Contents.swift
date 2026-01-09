@@ -1,17 +1,17 @@
 import Foundation
 
+
 func processInput(_ input: String) -> [Line] {
-    let matcher = /^(\[[\.#]+\])\s((?:\s*\(\d+(?:,\d+)*\))+)\s*(\{\d+(?:,\d+)*\})$/
+    guard let matcher = try? Regex("^(\\[[\\.#]+\\])\\s((?:\\s*\\(\\d+(?:,\\d+)*\\))+)\\s*(\\{\\d+(?:,\\d+)*\\})$") else { return [] }
 
     return input.split(separator: "\n").compactMap { line -> Line? in
         guard let match = line.firstMatch(of: matcher) else {
-            print("Failed to match \(line)")
             return nil
         }
 
-        let machineString = match.output.1.trimmingCharacters(in: .whitespacesAndNewlines)
-        let buttonString = match.output.2.trimmingCharacters(in: .whitespacesAndNewlines)
-        let joltageString = match.output.3.trimmingCharacters(in: .whitespacesAndNewlines)
+        let machineString = match.output[1].substring?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let buttonString = match.output[2].substring?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let joltageString = match.output[3].substring?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         let buttons = buttonString.split(separator: " ").map {
             Button(lights: $0.trimmingCharacters(in: CharacterSet(charactersIn: "()")).split(separator: ",").compactMap {
@@ -30,9 +30,8 @@ func solve(_ input: String, power: Bool) -> Int {
     let lines = processInput(input)
     
     return lines.enumerated().reduce(.zero) {
-        print("\nStarting line #\($1.offset + 1) - \($1.element.machine.desireState)")
-
-        return $0 + minimalPresses(for: $1.element).reduce(.zero) { $0 + $1 }
+        let presses = power ? joltageSearch(for: $1.element) : minimalPresses(for: $1.element).reduce(.zero) { $0 + $1 }
+        return $0 + presses
     }
 }
 
@@ -200,5 +199,4 @@ let input = """
 [####....#.] (6,7) (0,2,3,4,5,6) (0,1,4,5,6,7,8) (1,9) (1,4,7,8) (1,6,8) (1,6) (2,3,4,7) (3,5,8) (0,8,9) (1,2,3,4,6,7,8,9) (4,7,8) (2,5,9) {35,53,31,28,29,41,61,24,48,42}
 [.##.#.###] (0,2,3,4) (3,4,6) (0,3,8) (0,1,5,6,7,8) (2,3) (0,1,2,4) (0,1,3,5,6,8) (0,2,4,5,6,8) (0,4,5,8) (1,3,4,5,8) {39,3,17,32,48,27,33,0,38}
 """
-
 print("\n\nSolution: \(solve(input, power: true))")
