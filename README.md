@@ -6,11 +6,11 @@
 
 #### Favorite problems:
 
-*
+* Nice prank on day 12
 
 #### Interesting approaches:
 
-*
+* Day 10 was a [doozy](https://www.youtube.com/watch?v=BI60ALeeu54)
 
 
 # Other Years' Solutions
